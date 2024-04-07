@@ -1,1 +1,294 @@
+// Program.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
+//
 
+#define _CRT_SECURE_NO_WARNINGS
+
+#define REALESE
+// #define TEST
+
+#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <locale.h>
+
+typedef struct Node {
+    int value;
+    struct Node* next;
+} Node;
+
+typedef struct vector
+{
+    struct Node* next;
+} Vector;
+
+void push(Vector* head, int data)
+{
+    Node* tmp = (Node*)malloc(sizeof(Node));
+    tmp->value = data;
+    if (head->next == NULL)
+    {
+        head->next = tmp;
+        tmp->next = NULL;
+    }
+    else
+    {
+        tmp = head->next;
+        head->next = tmp;
+    }
+}
+
+int* pop(Vector* head)
+{
+    int* val = (int*)malloc(sizeof(int));
+    Node* p = head->next;
+    if (p == NULL)
+        return NULL;
+    if (p->next == NULL)
+    {
+        *val = p->value;
+        free(p);
+        head->next = NULL;
+        return val;
+    }
+    else
+    {
+        while (p->next->next != NULL)
+            p = p->next;
+        *val = p->next->value;
+        free(p->next);
+        p->next = NULL;
+        return val;
+    }
+}
+
+Vector* init()
+{
+    Vector* head = (Vector*)malloc(sizeof(Vector));
+    head->next = NULL;
+    return head;
+}
+
+struct Data
+{
+    int** adj;          // матрица связей
+    int n;          // число вершин
+};
+
+int** init_adj(int n)
+{
+    if (n > 100 || n <= 0)     // слишком большое число
+        return NULL;
+
+    int** adj = (int**)malloc(sizeof(int*) * n * n);
+    for (int i = 0; i < n * n; i++)
+    {
+        adj[i] = (int*)malloc(sizeof(int) * n * n);
+        for (int k = 0; k < n * n; k++)
+            adj[i][k] = -1;
+    }
+    return adj;
+}
+
+int* init_dists(int n, int max)
+{
+    int* dist = (int*)malloc(sizeof(int) * n);    // массив хранит расстояния до всех перекрестков
+    for (int i = 0; i < n; i++)
+        dist[i] = max;
+    return dist;
+}
+
+struct Data* input()
+{
+    struct Data* data = (struct Data*)malloc(sizeof(struct Data));
+    printf("Введите размер поля n: ");
+    scanf("%d", &data->n);
+    int n = data->n;
+    data->adj = init_adj(n);
+
+    printf("Поле ввода: \n");
+    int v = 1;
+    for (int r = 0; r < n; r++)
+    {
+        for (int k = 1; k <= n; k++)
+        {
+            printf("%d", n * n - (r + 1) * n + k);
+            if (k < n)
+                printf(" -> ");
+        }
+        printf("\n");
+        if (r < n - 1)
+        {
+            for (int k = 0; k < n; k++)
+                printf("^    ");
+            printf("\n");
+            for (int k = 0; k < n; k++)
+                printf("|    ");
+            printf("\n");
+        }
+    }
+    int val = 0;
+    printf("Введите все связи: \n");
+    printf("Связи на восток: \n");
+    for (int i = 0; i < n * n; i++)
+    {
+        if ((i + 1) % n == 0)
+            continue;
+        printf("%d->%d: ", i + 1, i + 2);
+        int w = rand() % 10;
+        printf("%d\n", w);
+        data->adj[i][i + 1] = w;
+    }
+
+    printf("Связи на север: \n");
+    for (int i = 0; i + n < n * n; i++)
+    {
+        printf("%d->%d: ", i + 1, i + 1 + n);
+        int w = rand() % 10;
+        printf("%d\n", w);
+        data->adj[i][i + n] = w;
+    }
+
+    /*cout << endl << "Список всех связей: " << endl;
+    for (int r = 0; r < n * n; r++)
+    {
+        for (int k = 0; k < n * n; k++)
+            cout << data->adj[r][k] << " ";
+        cout << endl;
+    }*/
+    return data;
+}
+
+void check_node(int v, int u, int w, int* dist, Vector* q)
+{
+    if (w > 0)
+    {
+        if (dist[u] > dist[v] + w)
+        {
+            dist[u] = dist[v] + w;
+            push(q, u);
+        }
+    }
+}
+
+int bfs(struct Data* data, int s)
+{
+    int* dist = init_dists(data->n, 100000);
+    dist[s] = 0;
+    Vector* q = init();
+    push(q, s);
+
+    while (q->next != NULL)
+    {
+        int v = *pop(q);
+        for (int u = 0; u < data->n * data->n; u++)
+        {
+            int w = data->adj[v][u];
+            check_node(v, u, w, dist, q);
+        }
+    }
+    return dist[data->n - 1];
+}
+
+#ifdef REALESE
+int main()
+{
+    setlocale(LC_ALL, "Russian");
+    struct Data* result = input();
+    printf("Ответ: %d\n", bfs(result, 0));
+    return 0;
+}
+#endif 
+
+#ifdef TEST
+#include <assert.h>
+
+void test_init_adj_NULL(void)
+{
+    printf("test_init_adj_NULL...");
+    int** result = 0;
+    int n = 101;
+    result = init_adj(n);
+    assert(NULL == result);
+    printf("OK\n");
+}
+
+void test_init_adj_positiv(void)
+{
+    printf("test_init_adj_positiv...");
+    int** result = 0;
+    int n = 10;
+    result = init_adj(n);
+    assert(NULL != result);
+    printf("OK\n");
+}
+
+void test_init_adj_zero(void)
+{
+    printf("test_init_adj_zero...");
+    int** result = 0;
+    int n = 0;
+    result = init_adj(n);
+    assert(NULL == result);
+    printf("OK\n");
+}
+
+void test_init_adj_neg(void)
+{
+    printf("test_init_adj_neg...");
+    int** result = 0;
+    int n = -1;
+    result = init_adj(n);
+    assert(NULL == result);
+    printf("OK\n");
+}
+
+void test_init_vector()
+{
+    printf("test_init_vector...");
+    Vector* v = init();
+    assert(NULL != v);
+    assert(NULL == v->next);
+    printf("OK\n");
+}
+
+void test_pop_last_item()
+{
+    printf("test_pop_last_item...");
+    Vector* v = init();
+    pop(v);
+    assert(NULL == v->next);
+    printf("OK\n");
+}
+
+void test_push_first_item()
+{
+    printf("test_push_first_item...");
+    Vector* v = init();
+    push(v, 1);
+    assert(NULL != v->next);
+    printf("OK\n");
+}
+
+void test_init_dist()
+{
+    printf("test_init_dist...");
+    int n = 10;
+    int max = 10000;
+    int* dist = init_dists(n, max);
+    for (int i = 0; i < n; i++)
+        assert(max == dist[i]);
+    printf("OK\n");
+}
+
+void main() // раскомментить для тестирования
+{
+    test_init_adj_NULL();
+    test_init_adj_positiv();
+    test_init_adj_zero();
+    test_init_adj_zero();
+    test_init_vector();
+    test_pop_last_item();
+    test_push_first_item();
+    test_init_dist();
+}
+#endif 
