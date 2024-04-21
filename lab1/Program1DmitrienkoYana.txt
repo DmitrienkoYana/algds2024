@@ -1,30 +1,49 @@
-﻿// Program.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
-//
-
+/* Part of Cosmos by OpenGenus Foundation */
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <locale.h>
 
-struct Data 
+#define INF 9999999
+
+
+struct Graph
 {
-    int** adj;          // матрица связей
-    int* d;             // минимальное расстояние
-    int* v;             // посещенные вершины
-    int n;          // число вершин
+    int** matrix;
+    int n;
+    int s;
+    int t;
 };
 
-struct Data* input()
+int min(int a, int b)
 {
-    struct Data* data = (struct Data*)malloc(sizeof(struct Data));
-    printf("Введите размер поля n: ");
-    scanf("%d", &data->n);
-    int n = data->n;
+    if (a < b)
+        return a;
+    else
+        return b;
+}
 
-    data->d = (int*)malloc(sizeof(int) * data->n * data->n);
-    data->v = (int*)malloc(sizeof(int) * data->n * data->n);
-    data->adj = (int**)malloc(sizeof(int*) * data->n * data->n);
-    for (int i = 0; i < n * n; i++)
-        data->adj[i] = (int*)malloc(sizeof(int) * data->n * data->n);
+struct Graph* InitTable(int n)
+{
+    struct Graph* graph = (struct Graph*)malloc(sizeof(struct Graph));
+    graph->n = n;
+    graph->matrix = (int**)malloc(sizeof(int*) * n); // создать матрицу смежности на count + 5 элементов (+5 - что б был запас)
+    for (int i = 0; i < n; i++) {
+        graph->matrix[i] = (int*)malloc(sizeof(int) * n);
+        for (int k = 0; k < n; k++)
+            graph->matrix[i][k] = INF;
+    }
+
+    return graph;
+}
+
+struct Graph* Input()
+{
+    int val = 1;
+    int n = 0;
+    printf("Введите размер поля n: ");
+    scanf("%d", &n);
+
+    struct Graph* graph = InitTable(n * n);
 
     printf("Поле ввода: \n");
     int v = 1;
@@ -47,7 +66,7 @@ struct Data* input()
             printf("\n");
         }
     }
-    int val = 0;
+
     printf("Введите все связи: \n");
     printf("Связи на восток: \n");
     for (int i = 0; i < n * n; i++)
@@ -57,7 +76,7 @@ struct Data* input()
         printf("%d->%d: ", i + 1, i + 2);
         int w = rand() % 10;
         printf("%d\n", w);
-        data->adj[i][i + 1] = w;
+        graph->matrix[i][i + 1] = w;
     }
 
     printf("Связи на север: \n");
@@ -66,69 +85,39 @@ struct Data* input()
         printf("%d->%d: ", i + 1, i + 1 + n);
         int w = rand() % 10;
         printf("%d\n", w);
-        data->adj[i][i + n] = w;
+        graph->matrix[i][i + n] = w;
     }
 
-    /*cout << endl << "Список всех связей: " << endl;
-    for (int r = 0; r < n * n; r++)
-    {
-        for (int k = 0; k < n * n; k++)
-            cout << data->adj[r][k] << " ";
-        cout << endl;
-    }*/
-    return data;
+    return graph;
 }
 
-int deikxtra(struct Data* data)
+//matrix - матрица смежности
+int originalFloydWarshall(struct Graph* graph) 
 {
-
-    int n = data->n * data->n;
-    //Инициализация вершин и расстояний
-    for (int i = 0; i < n; i++)
+    //Пробегаемся по всем вершинам и ищем более короткий путь
+    //через вершину k
+    for (int k = 0; k < graph->n; k++)
     {
-        data->d[i] = 10000;
-        data->v[i] = 1;
-    }
-
-    data->d[0] = 0;
-    int minindex;
-    int min;
-    int temp = 0;
-
-    // Шаг алгоритма
-    do {
-        minindex = 10000;
-        min = 10000;
-        for (int i = 0; i < n; i++)
-        { // Если вершину ещё не обошли и вес меньше min
-            if ((data->v[i] == 1) && (data->d[i] < min))
-            { // Переприсваиваем значения
-                min = data->d[i];
-                minindex = i;
-            }
-        }
-        if (minindex != 10000)
+        for (int i = 0; i < graph->n; i++)
         {
-            for (int i = 0; i < n; i++)
+            for (int j = 0; j < graph->n; j++)
             {
-                if (data->adj[minindex][i] > 0)
-                {
-                    temp = min + data->adj[minindex][i];
-                    if (temp < data->d[i])
-                        data->d[i] = temp;
-                }
+                //Новое значение ребра равно минимальному между старым
+                //и суммой ребер i <-> k + k <-> j (если через k пройти быстрее)
+                graph->matrix[i][j] = min(graph->matrix[i][j], graph->matrix[i][k] + graph->matrix[k][j]);
             }
-            data->v[minindex] = 0;
         }
-    } while (minindex < 10000);
-    return data->d[n - 1];
+    }
+    return graph->matrix[0][graph->n - 1];
 }
 
-int main()
+int main(int argc, char** argv) 
 {
     setlocale(LC_ALL, "Russian");
-    struct Data* result = input();
-    printf("Ответ: %d\n", deikxtra(result));
+
+    struct Graph* graph = Input();
+    int path = originalFloydWarshall(graph);
+
+    printf("\nПуть: %d", path);
     return 0;
 }
-
