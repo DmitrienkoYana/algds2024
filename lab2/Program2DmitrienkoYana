@@ -1,0 +1,133 @@
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+typedef struct Node {
+    int key;
+    int priority;
+    struct Node *left;
+    struct Node *right;
+} Node;
+
+Node* createNode(int key) {
+    Node *newNode = (Node*)malloc(sizeof(Node));
+    if (newNode) {
+        newNode->key = key;
+        newNode->priority = rand();
+        newNode->left = newNode->right = NULL;
+    }
+    return newNode;
+}
+
+Node* merge(Node *left, Node *right) {
+    if (!left) return right;
+    if (!right) return left;
+
+    if (left->priority > right->priority) {
+        left->right = merge(left->right, right);
+        return left;
+    } else {
+        right->left = merge(left, right->left);
+        return right;
+    }
+}
+
+void split(Node *root, int key, Node **left, Node **right) {
+    if (!root) {
+        *left = *right = NULL;
+        return;
+    }
+
+    if (root->key <= key) {
+        *left = root;
+        split(root->right, key, &((*left)->right), right);
+    } else {
+        *right = root;
+        split(root->left, key, left, &((*right)->left));
+    }
+}
+
+Node* insert(Node *root, int key) {
+    Node *newNode = createNode(key);
+    if (!root) return newNode;
+
+    Node *left, *right;
+    split(root, key, &left, &right);
+    return merge(merge(left, newNode), right);
+}
+
+void inorderTraversal(Node *root) {
+    if (root) {
+        inorderTraversal(root->left);
+        printf("%d ", root->key);
+        inorderTraversal(root->right);
+    }
+}
+
+void freeTree(Node *root) {
+    if (root) {
+        freeTree(root->left);
+        freeTree(root->right);
+        free(root);
+    }
+}
+
+// Unit тесты
+
+static void test_createNode(void **state) {
+    int key = 10;
+    Node *node = createNode(key);
+    assert_non_null(node);
+    assert_int_equal(node->key, key);
+    assert_non_null(node->left);
+    assert_non_null(node->right);
+    free(node);
+}
+
+static void test_insert(void **state) {
+    Node *root = NULL;
+    root = insert(root, 5);
+    root = insert(root, 2);
+    root = insert(root, 8);
+    root = insert(root, 1);
+    root = insert(root, 3);
+
+    assert_non_null(root);
+    assert_int_equal(root->key, 2);
+    assert_int_equal(root->left->key, 1);
+    assert_int_equal(root->right->key, 5);
+    freeTree(root);
+}
+
+static void test_merge(void **state) {
+    Node *left = createNode(2);
+    left->left = createNode(1);
+    left->right = createNode(3);
+
+    Node *right = createNode(6);
+    right->left = createNode(5);
+    right->right = createNode(7);
+
+    Node *merged = merge(left, right);
+
+    assert_non_null(merged);
+    assert_int_equal(merged->key, 5);
+    assert_int_equal(merged->left->key, 2);
+    assert_int_equal(merged->right->key, 6);
+    freeTree(merged);
+}
+
+int main(void) {
+    srand(time(NULL));
+
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_createNode),
+        cmocka_unit_test(test_insert),
+        cmocka_unit_test(test_merge),
+    };
+    return cmocka_run_group_tests(tests, NULL, NULL);
+}
